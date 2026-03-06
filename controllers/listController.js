@@ -1,5 +1,6 @@
 import List from '../models/List.js';
 import Board from '../models/Board.js';
+import pusher from '../utils/pusher.js';
 
 // @desc    Get lists by board ID
 // @route   GET /api/lists/:boardId
@@ -20,6 +21,16 @@ export const createList = async (req, res) => {
     const { title, boardId } = req.body;
 
     try {
+        const board = await Board.findById(boardId);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to add lists to this board' });
+        }
+
         const lists = await List.find({ boardId });
         const position = lists.length;
 
@@ -30,6 +41,7 @@ export const createList = async (req, res) => {
         });
 
         res.status(201).json(list);
+        pusher.trigger(`board-${boardId}`, 'board-updated', {});
     } catch (error) {
         res.status(400).json({ message: 'Invalid list data' });
     }
@@ -42,10 +54,27 @@ export const updateListsOrder = async (req, res) => {
     const { lists } = req.body; // array of { _id, position }
 
     try {
+        if (lists.length === 0) return res.status(200).json({ message: 'No lists to reorder' });
+
+        const firstList = await List.findById(lists[0]._id);
+        if (!firstList) return res.status(404).json({ message: 'List not found' });
+
+        const board = await Board.findById(firstList.boardId);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to reorder lists on this board' });
+        }
+
         for (let list of lists) {
             await List.findByIdAndUpdate(list._id, { position: list.position });
         }
         res.status(200).json({ message: 'Lists reordered successfully' });
+        // Trigger for the board
+        pusher.trigger(`board-${firstList.boardId}`, 'board-updated', {});
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -63,10 +92,21 @@ export const updateList = async (req, res) => {
             return res.status(404).json({ message: 'List not found' });
         }
 
+        const board = await Board.findById(list.boardId);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to update this list' });
+        }
+
         list.title = title || list.title;
 
         const updatedList = await list.save();
         res.status(200).json(updatedList);
+        pusher.trigger(`board-${updatedList.boardId}`, 'board-updated', {});
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -83,6 +123,16 @@ export const deleteList = async (req, res) => {
             return res.status(404).json({ message: 'List not found' });
         }
 
+        const board = await Board.findById(list.boardId);
+        if (!board) return res.status(404).json({ message: 'Board not found' });
+
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to delete this list' });
+        }
+
         // Also delete all associated cards
         await import('../models/Card.js').then((module) => {
             return module.default.deleteMany({ listId: req.params.id });
@@ -90,6 +140,7 @@ export const deleteList = async (req, res) => {
 
         await list.deleteOne();
         res.status(200).json({ message: 'List removed' });
+        pusher.trigger(`board-${list.boardId}`, 'board-updated', {});
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

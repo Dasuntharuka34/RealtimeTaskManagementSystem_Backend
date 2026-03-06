@@ -1,6 +1,4 @@
 import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
@@ -8,19 +6,20 @@ import mongoose from 'mongoose';
 dotenv.config();
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: process.env.FRONTEND_URL,
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        credentials: true,
-    },
-});
+const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:5173'].filter(Boolean);
 
-app.use(cors({
-    origin: process.env.FRONTEND_URL,
+const corsOptions = {
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
-}));
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 import cookieParser from 'cookie-parser';
@@ -50,8 +49,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-import { setupSockets } from './sockets/socketHandlers.js';
-setupSockets(io);
+// Socket.IO removed for Pusher migration
 
 const PORT = process.env.PORT || 5000;
 
@@ -67,7 +65,7 @@ const connectDB = async () => {
 // For local development
 if (process.env.NODE_ENV !== 'production') {
     connectDB().then(() => {
-        server.listen(PORT, () => {
+        app.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
     });

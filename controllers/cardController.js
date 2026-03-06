@@ -1,4 +1,5 @@
 import Card from '../models/Card.js';
+import pusher from '../utils/pusher.js';
 
 // @desc    Get cards by list ID
 // @route   GET /api/cards/:listId
@@ -44,6 +45,7 @@ export const createCard = async (req, res) => {
         });
 
         res.status(201).json(card);
+        pusher.trigger(`board-${boardId}`, 'board-updated', {});
     } catch (error) {
         res.status(400).json({ message: 'Invalid card data' });
     }
@@ -61,9 +63,9 @@ export const updateCard = async (req, res) => {
 
         const board = card.boardId;
         const isOwner = board.owner.toString() === req.user._id.toString();
-        const isAssigned = card.assignedTo.some(id => id.toString() === req.user._id.toString());
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
 
-        if (!isOwner && !isAssigned) {
+        if (!isOwner && !isMember) {
             return res.status(403).json({ message: 'Not authorized to edit this card' });
         }
 
@@ -74,6 +76,7 @@ export const updateCard = async (req, res) => {
 
         const updatedCard = await Card.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.status(200).json(updatedCard);
+        pusher.trigger(`board-${updatedCard.boardId}`, 'board-updated', {});
     } catch (error) {
         console.error('Update card error:', error);
         res.status(400).json({ message: 'Invalid update data' });
@@ -94,8 +97,11 @@ export const updateCardsOrder = async (req, res) => {
         if (!firstCard) return res.status(404).json({ message: 'Card not found' });
         
         const board = firstCard.boardId;
-        if (board.owner.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: 'Only board owner can reorder cards' });
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+        
+        if (!isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized. Only board owner or members can reorder cards' });
         }
 
         for (let card of cards) {
@@ -105,6 +111,10 @@ export const updateCardsOrder = async (req, res) => {
             });
         }
         res.status(200).json({ message: 'Cards reordered successfully' });
+        if (cards.length > 0) {
+            const firstCard = await Card.findById(cards[0]._id);
+            if (firstCard) pusher.trigger(`board-${firstCard.boardId}`, 'board-updated', {});
+        }
     } catch (error) {
         console.error('Reorder cards error:', error);
         res.status(500).json({ message: 'Server Error' });
@@ -123,14 +133,15 @@ export const deleteCard = async (req, res) => {
 
         const board = card.boardId;
         const isOwner = board.owner.toString() === req.user._id.toString();
-        const isAssigned = card.assignedTo.some(id => id.toString() === req.user._id.toString());
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
 
-        if (!isOwner && !isAssigned) {
+        if (!isOwner && !isMember) {
             return res.status(403).json({ message: 'Not authorized to delete this card' });
         }
 
         await Card.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: 'Card removed' });
+        pusher.trigger(`board-${card.boardId}`, 'board-updated', {});
     } catch (error) {
         console.error('Delete card error:', error);
         res.status(500).json({ message: 'Server Error' });
