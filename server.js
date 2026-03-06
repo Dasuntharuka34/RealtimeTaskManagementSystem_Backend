@@ -55,11 +55,25 @@ setupSockets(io);
 
 const PORT = process.env.PORT || 5000;
 
-mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/kanban')
-    .then(() => {
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/kanban');
         console.log('MongoDB Connected');
+    } catch (err) {
+        console.error('MongoDB connection error:', err);
+    }
+};
+
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    connectDB().then(() => {
         server.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
-    })
-    .catch((err) => console.log(err));
+    });
+} else {
+    // In production (Vercel), we just connect to DB
+    connectDB();
+}
+
+export default app;
