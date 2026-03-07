@@ -10,7 +10,7 @@ export const getBoards = async (req, res) => {
     try {
         const boards = await Board.find({
             $or: [{ owner: req.user._id }, { members: req.user._id }, { privacy: 'Public' }]
-        }).populate('owner', 'name email');
+        }).populate('owner', 'name email avatar');
         res.status(200).json(boards);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -45,7 +45,7 @@ export const createBoard = async (req, res) => {
 export const getBoardById = async (req, res) => {
     try {
         const board = await Board.findById(req.params.id)
-            .populate('owner', 'name email')
+            .populate('owner', 'name email avatar')
             .populate('members', 'name email avatar');
 
         if (board) {
@@ -77,7 +77,7 @@ export const updateBoard = async (req, res) => {
 
         const updated = await board.save();
         const populated = await updated.populate([
-            { path: 'owner', select: 'name email' },
+            { path: 'owner', select: 'name email avatar' },
             { path: 'members', select: 'name email avatar' }
         ]);
 
@@ -148,7 +148,7 @@ export const inviteMember = async (req, res) => {
         await board.save();
 
         const populated = await board.populate([
-            { path: 'owner', select: 'name email' },
+            { path: 'owner', select: 'name email avatar' },
             { path: 'members', select: 'name email avatar' }
         ]);
 
@@ -184,7 +184,7 @@ export const removeMember = async (req, res) => {
         await board.save();
 
         const populated = await board.populate([
-            { path: 'owner', select: 'name email' },
+            { path: 'owner', select: 'name email avatar' },
             { path: 'members', select: 'name email avatar' }
         ]);
 

@@ -7,7 +7,7 @@ import { put, del } from '@vercel/blob';
 export const getCards = async (req, res) => {
     try {
         const cards = await Card.find({ listId: req.params.listId })
-            .populate('assignedTo', 'name email')
+            .populate('assignedTo', 'name email avatar')
             .sort('position');
         res.status(200).json(cards);
     } catch (error) {
@@ -21,7 +21,7 @@ export const getCards = async (req, res) => {
 export const getCardsByBoard = async (req, res) => {
     try {
         const cards = await Card.find({ boardId: req.params.boardId })
-            .populate('assignedTo', 'name email')
+            .populate('assignedTo', 'name email avatar')
             .sort('position');
         res.status(200).json(cards);
     } catch (error) {
@@ -48,7 +48,7 @@ export const createCard = async (req, res) => {
             assignedTo: [req.user._id]
         });
         
-        card = await card.populate('assignedTo', 'name email');
+        card = await card.populate('assignedTo', 'name email avatar');
 
         res.status(201).json(card);
         const io = req.app.get('io');
@@ -82,7 +82,7 @@ export const updateCard = async (req, res) => {
         }
 
         const updatedCard = await Card.findByIdAndUpdate(req.params.id, req.body, { new: true })
-            .populate('assignedTo', 'name email');
+            .populate('assignedTo', 'name email avatar');
         res.status(200).json(updatedCard);
         const io = req.app.get('io');
         if (io) io.to(updatedCard.boardId.toString()).emit('board-updated');
@@ -179,7 +179,7 @@ export const addAttachment = async (req, res) => {
         }
 
         // Upload to Vercel Blob
-        const filename = `${Date.now()}-${req.file.originalname}`;
+        const filename = `attachment/${Date.now()}-${req.file.originalname}`;
         const blob = await put(filename, req.file.buffer, {
             access: 'public',
         });
