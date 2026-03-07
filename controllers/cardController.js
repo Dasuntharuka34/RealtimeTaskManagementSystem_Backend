@@ -6,7 +6,9 @@ import { put, del } from '@vercel/blob';
 // @access  Private
 export const getCards = async (req, res) => {
     try {
-        const cards = await Card.find({ listId: req.params.listId }).sort('position');
+        const cards = await Card.find({ listId: req.params.listId })
+            .populate('assignedTo', 'name email')
+            .sort('position');
         res.status(200).json(cards);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -18,7 +20,9 @@ export const getCards = async (req, res) => {
 // @access  Private
 export const getCardsByBoard = async (req, res) => {
     try {
-        const cards = await Card.find({ boardId: req.params.boardId }).sort('position');
+        const cards = await Card.find({ boardId: req.params.boardId })
+            .populate('assignedTo', 'name email')
+            .sort('position');
         res.status(200).json(cards);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
@@ -35,7 +39,7 @@ export const createCard = async (req, res) => {
         const cards = await Card.find({ listId });
         const position = cards.length;
 
-        const card = await Card.create({
+        let card = await Card.create({
             title,
             description,
             listId,
@@ -43,6 +47,8 @@ export const createCard = async (req, res) => {
             position,
             assignedTo: [req.user._id]
         });
+        
+        card = await card.populate('assignedTo', 'name email');
 
         res.status(201).json(card);
         const io = req.app.get('io');
@@ -75,7 +81,8 @@ export const updateCard = async (req, res) => {
             return res.status(403).json({ message: 'Only the board owner can change member assignments' });
         }
 
-        const updatedCard = await Card.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        const updatedCard = await Card.findByIdAndUpdate(req.params.id, req.body, { new: true })
+            .populate('assignedTo', 'name email');
         res.status(200).json(updatedCard);
         const io = req.app.get('io');
         if (io) io.to(updatedCard.boardId.toString()).emit('board-updated');

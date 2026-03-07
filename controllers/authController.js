@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import sendEmail from '../utils/sendEmail.js';
+import { put, del } from '@vercel/blob';
 
 const generateToken = (res, userId) => {
     const token = jwt.sign({ userId }, process.env.JWT_SECRET, {
@@ -171,5 +172,51 @@ export const updateUserProfile = async (req, res) => {
         });
     } else {
         res.status(404).json({ message: 'User not found' });
+    }
+};
+
+// @desc    Upload user avatar
+// @route   POST /api/users/profile/avatar
+// @access  Private
+export const uploadAvatar = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file provided' });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Output to Vercel string
+        const filename = `avatars/${user._id}-${Date.now()}-${req.file.originalname}`;
+        const blob = await put(filename, req.file.buffer, {
+            access: 'public',
+        });
+
+        // Optionally, if they already had an avatar, we could delete it from Vercel to save space.
+        if (user.avatar && user.avatar.includes('public.blob.vercel-storage.com')) {
+            try {
+                await del(user.avatar);
+            } catch (err) {
+                console.error('Failed to delete old avatar:', err);
+            }
+        }
+
+        user.avatar = blob.url;
+        const updatedUser = await user.save();
+
+        res.status(200).json({
+            _id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+            avatar: updatedUser.avatar,
+        });
+
+    } catch (error) {
+        console.error('Upload avatar error:', error);
+        res.status(500).json({ message: 'Server Error while uploading avatar' });
     }
 };
