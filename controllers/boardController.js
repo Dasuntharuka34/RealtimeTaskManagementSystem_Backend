@@ -32,6 +32,8 @@ export const createBoard = async (req, res) => {
             members: [req.user._id]
         });
         res.status(201).json(board);
+        const io = req.app.get('io');
+        if (io) io.emit('dashboard-updated');
     } catch (error) {
         res.status(400).json({ message: 'Invalid board data' });
     }
@@ -80,6 +82,11 @@ export const updateBoard = async (req, res) => {
         ]);
 
         res.status(200).json(populated);
+        const io = req.app.get('io');
+        if (io) {
+            io.to(req.params.id.toString()).emit('board-updated');
+            io.emit('dashboard-updated');
+        }
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -105,6 +112,11 @@ export const deleteBoard = async (req, res) => {
         await Board.findByIdAndDelete(req.params.id);
 
         res.status(200).json({ message: 'Board deleted successfully' });
+        const io = req.app.get('io');
+        if (io) {
+            io.to(req.params.id.toString()).emit('board-updated');
+            io.emit('dashboard-updated');
+        }
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -142,7 +154,10 @@ export const inviteMember = async (req, res) => {
 
         res.status(200).json(populated);
         const io = req.app.get('io');
-        if (io) io.to(req.params.id.toString()).emit('board-updated');
+        if (io) {
+            io.to(req.params.id.toString()).emit('board-updated');
+            io.emit('dashboard-updated');
+        }
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -175,7 +190,10 @@ export const removeMember = async (req, res) => {
 
         res.status(200).json(populated);
         const io = req.app.get('io');
-        if (io) io.to(req.params.id.toString()).emit('board-updated');
+        if (io) {
+            io.to(req.params.id.toString()).emit('board-updated');
+            io.emit('dashboard-updated');
+        }
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
