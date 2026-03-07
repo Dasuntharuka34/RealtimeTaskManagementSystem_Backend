@@ -19,7 +19,13 @@ const cardSchema = new mongoose.Schema({
         title: { type: String, required: true },
         isCompleted: { type: Boolean, default: false }
     }],
-    coverColor: { type: String, default: null }
+    coverColor: { type: String, default: null },
+    attachments: [{
+        url: { type: String, required: true },
+        filename: { type: String, required: true },
+        mimetype: { type: String },
+        uploadedAt: { type: Date, default: Date.now }
+    }]
 }, { timestamps: true });
 
 export default mongoose.model('Card', cardSchema);
