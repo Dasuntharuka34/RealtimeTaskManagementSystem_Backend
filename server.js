@@ -62,16 +62,6 @@ const connectDB = async () => {
     }
 };
 
-// For local development
-if (process.env.NODE_ENV !== 'production') {
-    connectDB().then(() => {
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
-    });
-} else {
-    // In production (Vercel), we just connect to DB
-    connectDB();
-}
+connectDB()
 
 export default app;
