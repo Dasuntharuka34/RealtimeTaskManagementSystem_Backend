@@ -1,6 +1,5 @@
 import List from '../models/List.js';
 import Board from '../models/Board.js';
-import pusher from '../utils/pusher.js';
 
 // @desc    Get lists by board ID
 // @route   GET /api/lists/:boardId
@@ -41,7 +40,8 @@ export const createList = async (req, res) => {
         });
 
         res.status(201).json(list);
-        pusher.trigger(`board-${boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(boardId.toString()).emit('board-updated');
     } catch (error) {
         res.status(400).json({ message: 'Invalid list data' });
     }
@@ -74,7 +74,8 @@ export const updateListsOrder = async (req, res) => {
         }
         res.status(200).json({ message: 'Lists reordered successfully' });
         // Trigger for the board
-        pusher.trigger(`board-${firstList.boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(firstList.boardId.toString()).emit('board-updated');
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -106,7 +107,8 @@ export const updateList = async (req, res) => {
 
         const updatedList = await list.save();
         res.status(200).json(updatedList);
-        pusher.trigger(`board-${updatedList.boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(updatedList.boardId.toString()).emit('board-updated');
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -140,7 +142,8 @@ export const deleteList = async (req, res) => {
 
         await list.deleteOne();
         res.status(200).json({ message: 'List removed' });
-        pusher.trigger(`board-${list.boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(list.boardId.toString()).emit('board-updated');
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

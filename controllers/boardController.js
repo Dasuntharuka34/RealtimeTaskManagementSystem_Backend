@@ -2,7 +2,6 @@ import Board from '../models/Board.js';
 import List from '../models/List.js';
 import Card from '../models/Card.js';
 import User from '../models/User.js';
-import pusher from '../utils/pusher.js';
 
 // @desc    Get all boards for user
 // @route   GET /api/boards
@@ -142,7 +141,8 @@ export const inviteMember = async (req, res) => {
         ]);
 
         res.status(200).json(populated);
-        pusher.trigger(`board-${req.params.id}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(req.params.id.toString()).emit('board-updated');
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }
@@ -174,7 +174,8 @@ export const removeMember = async (req, res) => {
         ]);
 
         res.status(200).json(populated);
-        pusher.trigger(`board-${req.params.id}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(req.params.id.toString()).emit('board-updated');
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

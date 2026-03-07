@@ -1,5 +1,4 @@
 import Card from '../models/Card.js';
-import pusher from '../utils/pusher.js';
 
 // @desc    Get cards by list ID
 // @route   GET /api/cards/:listId
@@ -45,7 +44,8 @@ export const createCard = async (req, res) => {
         });
 
         res.status(201).json(card);
-        pusher.trigger(`board-${boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(boardId.toString()).emit('board-updated');
     } catch (error) {
         res.status(400).json({ message: 'Invalid card data' });
     }
@@ -76,7 +76,8 @@ export const updateCard = async (req, res) => {
 
         const updatedCard = await Card.findByIdAndUpdate(req.params.id, req.body, { new: true });
         res.status(200).json(updatedCard);
-        pusher.trigger(`board-${updatedCard.boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(updatedCard.boardId.toString()).emit('board-updated');
     } catch (error) {
         console.error('Update card error:', error);
         res.status(400).json({ message: 'Invalid update data' });
@@ -113,7 +114,8 @@ export const updateCardsOrder = async (req, res) => {
         res.status(200).json({ message: 'Cards reordered successfully' });
         if (cards.length > 0) {
             const firstCard = await Card.findById(cards[0]._id);
-            if (firstCard) pusher.trigger(`board-${firstCard.boardId}`, 'board-updated', {});
+            const io = req.app.get('io');
+            if (firstCard && io) io.to(firstCard.boardId.toString()).emit('board-updated');
         }
     } catch (error) {
         console.error('Reorder cards error:', error);
@@ -141,7 +143,8 @@ export const deleteCard = async (req, res) => {
 
         await Card.findByIdAndDelete(req.params.id);
         res.status(200).json({ message: 'Card removed' });
-        pusher.trigger(`board-${card.boardId}`, 'board-updated', {});
+        const io = req.app.get('io');
+        if (io) io.to(card.boardId.toString()).emit('board-updated');
     } catch (error) {
         console.error('Delete card error:', error);
         res.status(500).json({ message: 'Server Error' });
