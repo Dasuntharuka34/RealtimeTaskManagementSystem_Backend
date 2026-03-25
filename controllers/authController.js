@@ -13,7 +13,6 @@ const generateToken = (res, userId) => {
         httpOnly: true,
         secure: true, // Always true for cross-site cookies in most modern browsers
         sameSite: 'none', // Required for cross-site cookies (Frontend and Backend on different domains)
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
     return token;
 };
