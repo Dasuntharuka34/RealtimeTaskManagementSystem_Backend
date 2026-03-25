@@ -20,6 +20,18 @@ export const getCards = async (req, res) => {
 // @access  Private
 export const getCardsByBoard = async (req, res) => {
     try {
+        const board = await import('../models/Board.js').then(m => m.default.findById(req.params.boardId));
+        if (!board) {
+            return res.status(404).json({ message: 'Board not found' });
+        }
+
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+
+        if (board.privacy !== 'Public' && !isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to access this board' });
+        }
+
         const cards = await Card.find({ boardId: req.params.boardId })
             .populate('assignedTo', 'name email avatar')
             .sort('position');

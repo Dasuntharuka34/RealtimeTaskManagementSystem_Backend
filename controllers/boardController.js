@@ -48,11 +48,19 @@ export const getBoardById = async (req, res) => {
             .populate('owner', 'name email avatar')
             .populate('members', 'name email avatar');
 
-        if (board) {
-            res.status(200).json(board);
-        } else {
-            res.status(404).json({ message: 'Board not found' });
+        if (!board) {
+            return res.status(404).json({ message: 'Board not found' });
         }
+
+        // Check if the board is public or if the user is owner/member
+        const isOwner = board.owner._id.toString() === req.user._id.toString();
+        const isMember = board.members.some(member => member._id.toString() === req.user._id.toString());
+
+        if (board.privacy !== 'Public' && !isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to access this board' });
+        }
+
+        res.status(200).json(board);
     } catch (error) {
         res.status(500).json({ message: 'Server Error' });
     }

@@ -6,6 +6,18 @@ import Board from '../models/Board.js';
 // @access  Private
 export const getLists = async (req, res) => {
     try {
+        const board = await Board.findById(req.params.boardId);
+        if (!board) {
+            return res.status(404).json({ message: 'Board not found' });
+        }
+
+        const isOwner = board.owner.toString() === req.user._id.toString();
+        const isMember = board.members.some(id => id.toString() === req.user._id.toString());
+
+        if (board.privacy !== 'Public' && !isOwner && !isMember) {
+            return res.status(403).json({ message: 'Not authorized to access this board' });
+        }
+
         const lists = await List.find({ boardId: req.params.boardId }).sort('position');
         res.status(200).json(lists);
     } catch (error) {
